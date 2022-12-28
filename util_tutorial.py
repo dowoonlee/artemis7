@@ -1,5 +1,4 @@
 import numpy as np
-from dwlib.util.binary_io import Binary_IO
 from dwlib.util.make_movie import make_movie
 import matplotlib.pyplot as plt
 
@@ -11,3 +10,4 @@ import matplotlib.pyplot as plt
 
 # mk = make_movie("./test", "png")
 # mk.to_gif(path = "./test", output="output", fps=1)
+
