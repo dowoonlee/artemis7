@@ -1,7 +1,14 @@
 import numpy as np
 from dwlib.util.make_movie import make_movie
 from dwlib.util.concept_drift_generator import concept_drift_generator
+from dwlib.stats.frechet_inception_distance import FID
+from dwlib.stats.binning import binning
 import matplotlib.pyplot as plt
+
+
+    
+
+
 
 
 # for i in range(10):
