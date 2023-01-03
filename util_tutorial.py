@@ -3,6 +3,7 @@ from dwlib.util.make_movie import make_movie
 from dwlib.util.concept_drift_generator import concept_drift_generator
 import matplotlib.pyplot as plt
 
+
 # for i in range(10):
 #     x = np.random.rand(10, 10)
 #     plt.imshow(x)
@@ -24,7 +25,6 @@ n_label= 2
 cdg = concept_drift_generator(time_range, drift_time_sequence, size, n_cont, n_disc)
 df = cdg.generate(drift="real", n_label=n_label)
 
-
 # for col in range(n_disc):
 #     base, drift = df[df.time<Time(drift_time_sequence[0]).mjd], df[df.time>=Time(drift_time_sequence[0]).mjd]
 #     xbase, xdrft = base["D%02d"%col], drift["D%02d"%col]
@@ -37,12 +37,12 @@ df = cdg.generate(drift="real", n_label=n_label)
 #     plt.show()
 
 
-from sklearn.decomposition import PCA
-X_base = df[df.time<Time(drift_time_sequence[0]).mjd].drop(columns=["time", "y"]).to_numpy()
-pca = PCA(n_components=2)
-pca.fit(X_base)
-y = df.y.to_numpy()
-X_r = pca.transform(df.drop(columns=["time","y"]).to_numpy())
-for lb in range(n_label):
-    plt.scatter(X_r[y==lb, 0], X_r[y==lb, 1], s=1)
-plt.show()
+# from sklearn.decomposition import PCA
+# X_base = df[df.time<Time(drift_time_sequence[0]).mjd].drop(columns=["time", "y"]).to_numpy()
+# pca = PCA(n_components=2)
+# pca.fit(X_base)
+# y = df.y.to_numpy()
+# X_r = pca.transform(df.drop(columns=["time","y"]).to_numpy())
+# for lb in range(n_label):
+#     plt.scatter(X_r[y==lb, 0], X_r[y==lb, 1], s=1, alpha=0.3)
+# plt.show()
