@@ -1,88 +1,57 @@
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
-from numpy.random import gamma, randint
+from numpy.random import choice, rand, gamma
 from astropy.time import Time
 
-
 class concept_drift_generator():
-    def __init__(self, time_range, drift_time_sequence, size, n_cont, n_disc):
+    def __init__(self, time_range, drift_time_sequence, n_drift_type, n_cont, n_disc, **kwargs):
         """
-        time_range : array-like String. 데이터셋의 시작시간과 끝시간. (start, end)형태로 입력.
-        drift_time_sequence : array-like String. drift가 작동하는 시간.
+        time_range : array-like. 데이터셋의 시작시간과 끝시간. (start, end)형태로 입력.
+        drift_time_sequence : array-like. drift가 작동하는 시간.
+        n_drift_type : Integer. drift 종류의 갯수(현재 2 (base/drift)까지만 지원)
         size : Integer. data point 갯수
+        dt : Float. data point의 간격
         n_cont : 연속데이터 컬럼의 갯수
-        n_disc : 불연속데이터 컬럼의 갯수
+        n_disc : 불연속데이터 컬럼의 갯수 (under developement)
         """
-        self.time = np.linspace(Time(time_range[0]).mjd, Time(time_range[1]).mjd, size)
-        self._size = size
+
+        if not time_range[0].isdigit():
+            time_range = np.sort(Time(time_range).mjd)
+        if not drift_time_sequence[0].isdigit():
+            drift_time_sequence = np.sort(Time(drift_time_sequence).mjd)
+        keys = kwargs.keys()
+
+        if "size" in keys:
+            self._size = kwargs["size"]
+            self.time = np.linspace(time_range[0], time_range[1], self._size)
+        elif "dt" in keys:
+            self.time = np.arange(time_range[0], time_range[1], kwargs["dt"])
+            self._size = len(self.time)
+
+        if n_cont + n_disc<=0:
+            raise ValueError("At least 1 column should be exist")
+
         self._ncol = (n_cont, n_disc)
         dt = 1e-6
-        self._drift_sequence = np.append(Time(drift_time_sequence).mjd, self.time[-1]+dt)
-        self._drift_sequence = np.insert(self._drift_sequence, 0, Time(time_range[0]).mjd-dt)
+        self._drift_sequencet = np.concatenate((drift_time_sequence, [time_range[1]+dt , time_range[0]-dt]), axis=0)
+        self._drift_sequence = np.sort(self._drift_sequence)
+        self.n_drift_type = np.min([n_drift_type, len(drift_time_sequence), 2])
+        self.noise = 0
 
     @staticmethod
-    def _generate_cdf(size):
-        """
-        주어진 크기의 임의의 CDF (Cumulative Dist Func)을 만드는 함수
-        size : CDF의 data point 갯수
-        """
-        pdf = np.random.random(size)
+    def _classfication(X, att_cols, threshold):
+        X = X[:, att_cols]
+        sumX = np.sum(X, axis=1)
+        return (sumX>threshold).astype(np.int32)
+
+    @staticmethod
+    def _discrete_sampling(sample, pdf, size):
+        if len(sample) != len(pdf):
+            raise ValueError("The sample and PDF have different size")
         pdf /= np.sum(pdf)
         cdf = np.cumsum(pdf)
         cdf = np.insert(cdf, 0, 0)
-        return cdf
 
-    def _generate_continuous_drift(self, base_coeff, drift_coeff, size=None, drift_type="sudden"):
-        """
-        Virtual Drift가 존재하는 연속 데이터 생성
-        base_coeff : array-like. base-data를 생성하기위한 gamma dist의 (shape, scale)
-        dirft_coeff : array-like. drift-data를 생성하기위한 gamma dist의 (shape, scale)
-        size : Integer. data point의 갯수. 미입력 시 self._size로 대체
-        """
-        if size is None:
-            size = self._size
-
-        data = np.zeros(size)
-
-        on_drift = False
-        for ts, te in zip(self._drift_sequence[:-1], self._drift_sequence[1:]):
-            cur_interval = np.where((self.time>ts) & (self.time<=te))[0]
-            coeff_bef = base_coeff if on_drift else drift_coeff
-            coeff_now = drift_coeff if on_drift else base_coeff
-            if drift_type == "sudden":
-                data[cur_interval] = gamma(coeff_now[0], coeff_now[1], size=len(cur_interval))
-            else:
-                itv_len = len(cur_interval)
-                l = int(0.3*itv_len)
-                incre_pivot = cur_interval[int(itv_len*0.3)]
-                decre_pivot = cur_interval[int(itv_len*0.7)]
-                for c, idx in enumerate(cur_interval):
-                    if idx<incre_pivot and ts!=self._drift_sequence[0]:
-                        bef = (l-c)/(2*l)
-                    elif idx>decre_pivot and te!=self._drift_sequence[-1]:
-                        bef = (l-(itv_len-c))/(2*l)
-                    else:
-                        bef = 0
-
-                    if drift_type == "incremental":
-                        coeff = bef*coeff_bef+(1-bef)*coeff_now
-                    elif drift_type == "gradual":
-                        coeff = coeff_bef if np.random.uniform()<bef else coeff_now
-                    data[idx] = gamma(coeff[0], coeff[1])
-            on_drift = not on_drift
-        return data
-
-    def _generate_discrete(self, sample, size=None):
-        """
-        불연속 데이터 생성
-        sample : array-like. 불연속 데이터의 unique array.
-        size : Integer. data point의 갯수. 미입력 시 self._size로 대체
-        """
-        if size is None:
-            size = self._size
-
-        cdf = self._generate_cdf(len(sample))
         data = np.zeros(size)
         dums = np.random.random(size)
 
@@ -94,161 +63,250 @@ class concept_drift_generator():
             data[idx] = sample[pidx]
         return data
     
-    def _generate_dicrete_drift(self, sample, size=None, drift_type = "sudden"):
-        """
-        불연속 데이터 생성
-        sample : array-like. 불연속 데이터의 unique array.
-        size : Integer. data point의 갯수. 미입력 시 self._size로 대체
-        """
-        if size is None:
-            size = self._size
+    def _add_noise_cont(self, base_col):
+        pos = np.random.random(self._size)
+        pos = np.where(pos>self.noise)[0]
+        base_col[pos] = base_col[pos]*np.random.normal(loc=1, size=len(pos))
+        return base_col
 
-        cdf_base = self._generate_cdf(len(sample))
-        cdf_drift = self._generate_cdf(len(sample))
-
-        data = np.zeros(size)
-        dums = np.random.random(size)
-
-        on_drift = False
-        for ts, te in zip(self._drift_sequence[:-1], self._drift_sequence[1:]):
-            cdf_bef = cdf_base if on_drift else cdf_drift
-            cdf_now = cdf_drift if on_drift else cdf_base
-
-            cur_interval = np.where((self.time>ts) & (self.time<=te))[0]
-
-            itv_len = len(cur_interval)
-            l = int(0.3*itv_len)
-            incre_pivot = cur_interval[int(itv_len*0.3)]
-            decre_pivot = cur_interval[int(itv_len*0.7)]
-
-            for c, idx in enumerate(cur_interval):
-                pidx = 0
-                if drift_type == "sudden":
-                    cdf = cdf_now
-                elif drift_type == "incremental":
-                    if idx<incre_pivot:
-                        bef = (l-c)/(2*l)
-                    elif idx>decre_pivot and te != self._drift_sequence[-1]:
-                        bef = (l-(itv_len-c))/(2*l)
-                    else:
-                        bef = 0
-                    cdf = cdf_bef*bef + cdf_now*(1-bef)
-
-                elif drift_type == "gradual":
-                    if idx<incre_pivot:
-                        bef = (l-c)/(2*l)
-                    elif idx>decre_pivot and te != self._drift_sequence[-1]:
-                        bef = (l-(itv_len-c))/(2*l)
-                    else:
-                        bef = 0
-                    cdf = cdf_bef if np.random.uniform()<bef else cdf_now
-                else:
-                    raise ValueError("Undefined Drift Type : <%s>"%drift_type)
-                while cdf[pidx]<dums[idx]:
-                    pidx += 1
-                pidx -= 1
-                data[idx] = sample[pidx]
-            on_drift = not on_drift
-        return data.astype(int)
-    
-    def _generate_real(self, n_cont, n_disc, n_label=2, drift_type="sudden"):
-        """
-        Real Drift가 존재하는 column 생성
-        n_cont : 연속데이터 컬럼의 갯수
-        n_disc : 불연속데이터 컬럼의 갯수
-        n_label : classification/regression 을 위한 label의 갯수
-        """
-
-        base = {"time" : self.time}
-        drift, drift_set_size = {"time" : self.time}, int(len(np.where(self.time<self._drift_sequence[1])[0]))
-        for conti in range(n_cont):
-            base_coeff = np.random.rand(2) * 5 + 1
-            drift_coeff = np.random.rand(2)* 3 + 6
-            base["C%02d"%conti] = gamma(base_coeff[0], base_coeff[1], size=self._size)
-            if drift_type=="incremental":
-                drift["C%02d"%conti] = self._generate_continuous_drift(base_coeff, drift_coeff, drift_type=drift_type)
-            else:
-                drift["C%02d"%conti] = gamma(drift_coeff[0], drift_coeff[1], size=self._size)
-        for discr in range(n_disc):
-            disc_sample_limit = np.max([4, int(gamma(shape=3, scale=3))])
-            disc_sample = randint(1, disc_sample_limit, int(disc_sample_limit/2))
-            base["D%02d"%discr] = self._generate_discrete(disc_sample)
-            drift["D%02d"%discr] = self._generate_discrete(disc_sample, size=drift_set_size)
-            
-        
-        base = pd.DataFrame(base)
-        drift = pd.DataFrame(drift)
-        on_drift = False
+    def _real_sudden(self, base, thresholds, att_cols):
         y = np.array([])
-        
-        X_base = base[base.time<self._drift_sequence[1]].drop(columns="time").to_numpy()
-        
-        kms_base = KMeans(n_clusters=n_label, random_state=42).fit(X_base)
-        for ts, te in zip(self._drift_sequence[:-1], self._drift_sequence[1:]):
-            X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
-            if drift_type == "sudden":
-                X_drift = drift.drop(columns="time").to_numpy()
-                kms_drift = KMeans(n_clusters=n_label, random_state=42).fit(X_drift)
-                if on_drift:
-                    yadd = kms_drift.predict(X)
-                else:
-                    yadd = kms_base.predict(X)
-            else:
-                cur_interval = np.where((self.time>ts) & (self.time<=te))[0]
-                itv_len = len(cur_interval)
-                pre_itv = cur_interval[:int(itv_len*0.3)]
-                mid_itv = cur_interval[int(itv_len*0.3):int(itv_len*0.7)]
-                suf_itv = cur_interval[int(itv_len*0.7):]
-
-                yadd = np.array([])
-                for itv in [pre_itv, mid_itv, suf_itv]:
-                    X_drift = drift.drop(columns="time").to_numpy()[itv]
-                    kms_predict = KMeans(n_clusters=n_label, random_state=42).fit_predict(X_drift)
-                    yadd = np.concatenate((yadd, kms_predict), axis=0)
-            y = np.concatenate((y, yadd), axis=0)
+        for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
+                X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
+                threshold = thresholds[idx%2]
+                yadd = self._classfication(X = X,
+                                        att_cols = att_cols,
+                                        threshold = threshold)
+                y = np.concatenate((y,yadd),axis=0)
         base["y"] = y
         return base
     
-    def _generate_virtual(self, n_cont, n_disc, n_label=2, drift_type="sudden"):
-        """
-        Virtual Drift가 존재하는 column 생성
-        n_cont : 연속데이터 컬럼의 갯수
-        n_disc : 불연속데이터 컬럼의 갯수
-        n_label : classification/regression 을 위한 label의 갯수
-        """
-        d = {"time" : self.time}
-        for conti in range(n_cont):
-            base_coeff = np.random.rand(2) * 5 + 1
-            drift_coeff = np.random.rand(2)* 3 + 6
-            d["C%02d"%conti] = self._generate_continuous_drift(base_coeff, drift_coeff, drift_type = drift_type)
-        for discr in range(n_disc):
-            disc_sample_limit = np.max([4, int(gamma(shape=3, scale=3))])
-            disc_sample = randint(1, disc_sample_limit, int(disc_sample_limit/2))
-            d["D%02d"%discr] = self._generate_dicrete_drift(disc_sample, drift_type=drift_type)
+    def _real_incremental(self, base, thresholds, att_cols):
+        y = np.array([])
+        on_drift = False
+        for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
+            X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
 
-        d = pd.DataFrame(d)
-        X_base = d[d.time<self._drift_sequence[1]].drop(columns="time").to_numpy()
-        kms = KMeans(n_clusters=n_label, random_state=42).fit(X_base)
-        y = kms.predict(d.drop(columns="time").to_numpy())
-        d["y"] = y
-        return d
+            threshold_bef = thresholds[0] if on_drift else thresholds[1]
+            threshold_now = thresholds[1] if on_drift else thresholds[0]
 
-    def generate(self, drift="real", n_label=2, time="mjd", drift_type="sudden"):
+            cur_interval = np.where((self.time>ts) & (self.time<=te))[0]
+            itv_len = len(cur_interval)
+            l = int(0.3*itv_len)
+            pre_pivot = cur_interval[int(itv_len*0.3)]
+            suf_pivot = cur_interval[int(itv_len*0.7)]
+
+            for c, idx in enumerate(cur_interval):
+                if idx<pre_pivot:
+                    bef = (l-c)/(2*l)
+                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                    bef = (l-(itv_len-c))/(2*l)
+                else:
+                    bef = 0
+                X_sub = X[c, :].reshape(1, -1)
+                threshold = threshold_bef*bef + threshold_now*(1-bef)
+                yadd = self._classfication(X = X_sub,
+                                    att_cols = att_cols,
+                                    threshold = threshold)
+                y = np.concatenate((y,yadd),axis=0)
+            on_drift = not on_drift
+        base["y"] = y
+        return base
+    
+    def _real_gradual(self, base, thresholds, att_cols):
+        y = np.array([])
+        on_drift = False
+        for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
+            X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
+
+            threshold_bef = thresholds[0] if on_drift else thresholds[1]
+            threshold_now = thresholds[1] if on_drift else thresholds[0]
+
+            cur_interval = np.where((self.time>ts) & (self.time<=te))[0]
+            itv_len = len(cur_interval)
+            l = int(0.3*itv_len)
+            pre_pivot = cur_interval[int(itv_len*0.3)]
+            suf_pivot = cur_interval[int(itv_len*0.7)]
+
+            for c, idx in enumerate(cur_interval):
+                if idx<pre_pivot:
+                    bef = (l-c)/(2*l)
+                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                    bef = (l-(itv_len-c))/(2*l)
+                else:
+                    bef = 0
+                X_sub = X[c, :].reshape(1, -1)
+                threshold = threshold_bef if np.random.random()<=bef else threshold_now
+                yadd = self._classfication(X = X_sub,
+                                    att_cols = att_cols,
+                                    threshold = threshold)
+                y = np.concatenate((y,yadd),axis=0)
+            on_drift = not on_drift
+        base["y"] = y
+        return base
+    
+    def _generate_real(self, n_cont, n_disc, strength, drift_type="sudden"):
+        base_coeff = rand(n_cont, 2)*10 #G[[k, theta]*n_cont]
+
+        base = {"time" : self.time}
+        attribute_cols = choice(np.arange(n_cont), n_cont//2, replace=False)
+        self.att_cols = attribute_cols
+        dumx = np.zeros(self._size) #rename
+        for idx, (k, theta) in enumerate(base_coeff):
+            gamma_dist = gamma(k, theta, self._size)
+            base["C%02d"%idx] = gamma_dist
+            if idx in attribute_cols:
+                dumx += gamma_dist
+        gamma_dist /= n_cont
+        att_mean, att_std = np.mean(dumx), np.std(dumx)
+        thresholds = [att_mean+att_std*strength/20, att_mean-att_std*strength/20]
+        base = pd.DataFrame(base)
+
+        if drift_type == "sudden":
+            df = self._real_sudden(base = base,
+            thresholds=thresholds,
+            att_cols=attribute_cols)
+            
+        elif drift_type == "incremental":
+            df = self._real_incremental(base = base,
+            thresholds=thresholds,
+            att_cols=attribute_cols)
+        
+        elif drift_type == "gradual":
+            df = self._real_gradual(base = base,
+            thresholds=thresholds,
+            att_cols=attribute_cols)
+        else:
+            raise KeyError("There is no <%s> type of drift"%drift_type)
+        return df
+    
+    def _virtual_sudden(self, base, drift_coeff):
+        on_drift=False
+        for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
+            cond = (base.time>ts) & (base.time<=te)
+            if on_drift:
+                for idx, (k, theta) in enumerate(drift_coeff):
+                    temp_g = gamma(k, theta, np.sum(cond.to_numpy()))
+                    base["C%02d"%idx][cond] = temp_g
+            on_drift = not on_drift
+        return base
+    
+    def _virtual_incremental(self, base, base_coeff, drift_coeff):
+        on_drift=False
+        for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
+            coeff_bef = base_coeff if on_drift else drift_coeff
+            coeff_now = drift_coeff if on_drift else base_coeff
+
+            cur_interval = np.where((self.time>ts) & (self.time<=te))[0]
+            itv_len = len(cur_interval)
+            l = int(0.3*itv_len)
+            pre_pivot = cur_interval[int(itv_len*0.3)]
+            suf_pivot = cur_interval[int(itv_len*0.7)]
+
+            for c, idx in enumerate(cur_interval):
+                if idx<pre_pivot:
+                    bef = (l-c)/(2*l)
+                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                    bef = (l-(itv_len-c))/(2*l)
+                else:
+                    bef = 0                    
+                coeffs = coeff_bef*bef + coeff_now*(1-bef)
+                X_sub = np.array([gamma(k, theta) for k, theta in coeffs])
+                
+                for i, x in enumerate(X_sub):
+                    base["C%02d"%i][idx] = x
+            on_drift = not on_drift
+        return base
+    
+    def _virtual_gradual(self, base, base_coeff, drift_coeff):
+        on_drift=False
+        for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
+            coeff_bef = base_coeff if on_drift else drift_coeff
+            coeff_now = drift_coeff if on_drift else base_coeff
+
+            cur_interval = np.where((self.time>ts) & (self.time<=te))[0]
+            itv_len = len(cur_interval)
+            l = int(0.3*itv_len)
+            pre_pivot = cur_interval[int(itv_len*0.3)]
+            suf_pivot = cur_interval[int(itv_len*0.7)]
+
+            for c, idx in enumerate(cur_interval):
+                if idx<pre_pivot:
+                    bef = (l-c)/(2*l)
+                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                    bef = (l-(itv_len-c))/(2*l)
+                else:
+                    bef = 0
+                coeffs = coeff_bef if np.random.random()<=bef else coeff_now
+                X_sub = np.array([gamma(k, theta) for k, theta in coeffs])
+                
+                for i, x in enumerate(X_sub):
+                    base["C%02d"%i][idx] = x
+            on_drift = not on_drift
+        return base
+    
+    def _generate_virtual(self, n_cont, n_disc, strength, drift_type="sudden"):
+        base_coeff = rand(n_cont, 2)*10 #G[[k, theta]*n_cont]
+        a = np.log2(strength)
+        drift_coeff = np.array([[k -(k*a)/(t+a), t+a] for (k, t) in base_coeff])
+
+        base = {"time" : self.time}
+        attribute_cols = choice(np.arange(n_cont), n_cont//2, replace=False)
+        dumx = np.zeros(self._size) #rename
+
+        for idx, (k, theta) in enumerate(base_coeff):
+            gamma_dist = gamma(k, theta, self._size)
+            base["C%02d"%idx] = gamma_dist
+            if idx in attribute_cols:
+                dumx += gamma_dist
+        gamma_dist /= n_cont
+        att_mean, att_std = np.mean(dumx), np.std(dumx)
+        base = pd.DataFrame(base)
+
+        threshold = att_mean + att_std/2
+
+        if drift_type == "sudden":
+            df = self._virtual_sudden(base=base, drift_coeff=drift_coeff)
+
+        elif drift_type == "incremental":
+            df = self._virtual_incremental(base=base, base_coeff=base_coeff, drift_coeff=drift_coeff)
+
+        elif drift_type == "gradual":
+            df = self._virtual_gradual(base=base, base_coeff=base_coeff, drift_coeff=drift_coeff)
+        else:
+            raise KeyError("There is no <%s> type of drift"%drift_type)
+        
+        y = self._classfication(X = df.drop(columns="time").to_numpy(),
+                                att_cols = attribute_cols,
+                                threshold = threshold)
+        df["y"] = y
+
+        return df
+
+    def generate(self, drift="real", time="mjd", drift_type="sudden", strength=10, noise=0.1):
         """
         Drift Generator
         drift : ["real", "virtual"]. drift의 종류 설정
-        n_label : classification/regression 을 위한 label의 갯수
         time : ["mjd", "datetime64"]. output의 time형식
+        drift_Type : ["sudden", "incremental", "gradual"]. drift 발생 유형 설정
+        strength : drift의 세기. default=10
+        noise : data의 noise 비율
         """
         n_cont, n_disc = self._ncol
         
         if drift == "real":
-            d = self._generate_real(n_cont, n_disc, n_label, drift_type)
+            d = self._generate_real(n_cont, n_disc, strength, drift_type)
 
         elif drift == "virtual":
-            d = self._generate_virtual(n_cont, n_disc, n_label, drift_type)
+            if drift_type == "incremental":
+                print("Generating incremtanl virtual drift data may take a long time")
+            d = self._generate_virtual(n_cont, n_disc, strength, drift_type)
         
         if time=="datetime64":
-            d.time = Time(d.time, format="mjd").datetime64
-
+            d.time = Time(np.round(d.time.to_numpy(), 3), format="mjd").datetime64
+        
+        self.noise = noise
+        if self.noise>0:
+            for col in range(self._ncol[0]):
+                d["C%02d"%col] = self._add_noise_cont(d["C%02d"%col].to_numpy())
         return d
