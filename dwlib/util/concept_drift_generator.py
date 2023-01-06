@@ -3,6 +3,34 @@ import pandas as pd
 from numpy.random import choice, rand, gamma
 from astropy.time import Time
 
+
+"""
+Concept drift generator (CDG)
+
+
+1. Initialization
+
+Between (time_range[0]~time_range[1]), Drifts take place at 'drfit_time_sequence'.
+'time_range' and 'drift_time_sequence' support float (mjd) and string (datetime64)
+
+Currently (2023-01-06) CDG only support continuous columns and 2type drift mode (base-drift).
+Discrete columns and many-type drift mode are under developement.
+
+
+2. Generation
+The X (Data set) is randomly sampled with Gamma distribution (https://en.wikipedia.org/wiki/Gamma_distribution).
+Gamma distribution has two parameters (k, theta). The parameters follow normal distribution.
+
+generate() methods supports 2 types of drift modes [real/virtual] and 3types of drift patterns [sudden/incremental/gradual].
+In case of drift mode, "real" is the drift in p(y|X) which is the case that X doesn't change but label y change only.
+For "virtual", p(y|X) doesn't change but the distribution of X changes.
+you can control the strength of the drift with parameter strength. 'strength' works linearly in "real" and logarithmic in "virtual".
+Drift pattern depends on the time interval of [drift_start, drift_end]. "sudden" make drift with time interval=0. "Incremental" and "gradual" have same time interval of [0.3*dT_bef, 0.3*dT_aft]. The difference between them is that "incremental" has gentle drift in time interval and "gradual" has abrupting dirft.
+
+
+
+"""
+
 class concept_drift_generator():
     def __init__(self, time_range, drift_time_sequence, n_drift_type, n_cont, n_disc, **kwargs):
         """
@@ -33,7 +61,7 @@ class concept_drift_generator():
 
         self._ncol = (n_cont, n_disc)
         dt = 1e-6
-        self._drift_sequencet = np.concatenate((drift_time_sequence, [time_range[1]+dt , time_range[0]-dt]), axis=0)
+        self._drift_sequence = np.concatenate((drift_time_sequence, [time_range[1]+dt , time_range[0]-dt]), axis=0)
         self._drift_sequence = np.sort(self._drift_sequence)
         self.n_drift_type = np.min([n_drift_type, len(drift_time_sequence), 2])
         self.noise = 0
@@ -65,7 +93,7 @@ class concept_drift_generator():
     
     def _add_noise_cont(self, base_col):
         pos = np.random.random(self._size)
-        pos = np.where(pos>self.noise)[0]
+        pos = np.where(pos<=self.noise)[0]
         base_col[pos] = base_col[pos]*np.random.normal(loc=1, size=len(pos))
         return base_col
 

@@ -8,11 +8,11 @@ import numpy as np
 time_range = ["2012-01-01", "2018-01-01"]
 drift_time_seq = ["2014-01-01"]
 size = int(Time(time_range[1]).mjd - Time(time_range[0]).mjd)
-n_cont, n_disc = 6, 0
+n_cont, n_disc = 80, 0
 cdg = concept_drift_generator(time_range=time_range, drift_time_sequence=drift_time_seq,
 n_drift_type=1, n_cont=n_cont, n_disc=n_disc,
 dt = 1/24)
-base = cdg.generate(drift= "real", drift_type="sudden", strength=5, noise=0.1)
+base = cdg.generate(drift= "real", drift_type="sudden", strength=5, noise=0.01)
 
 # befs = base[base.time<Time(drift_time_seq[0]).mjd]
 # afts = base[base.time>=Time(drift_time_seq[0]).mjd]
