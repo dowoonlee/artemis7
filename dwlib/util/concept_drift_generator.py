@@ -177,7 +177,7 @@ class concept_drift_generator():
             thresholds=thresholds,
             att_cols=attribute_cols)
         else:
-            raise KeyError("There is no <%s> type of drift"%drift_type)
+            raise KeyError("There is no such type of drift [%s]"%drift_type)
         return df
     
     def _virtual_sudden(self, base, drift_coeff):
@@ -274,7 +274,7 @@ class concept_drift_generator():
         elif drift_type == "gradual":
             df = self._virtual_gradual(base=base, base_coeff=base_coeff, drift_coeff=drift_coeff)
         else:
-            raise KeyError("There is no <%s> type of drift"%drift_type)
+            raise KeyError("There is no such type of drift [%s]"%drift_type)
         
         y = self._classfication(X = df.drop(columns="time").to_numpy(),
                                 att_cols = attribute_cols,
