@@ -3,13 +3,14 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 from collections import namedtuple
+from dwlib.stats.binning import binning
 
 import numpy as np
 CmapInfo = namedtuple('CmapInfo', [
     'cmap', 'vr'
 ])
 AxisInfo = namedtuple('AxisInfo', [
-    'ax', 'nplt', 'nsct', 'xr', 'yr', 'cmapinfo'
+    'ax', 'nplt', 'nsct', 'ncon', 'xr', 'yr', 'cmapinfo'
 ])
 
 class myFigure(object):
@@ -27,6 +28,7 @@ class myFigure(object):
                 ax = plt.subplot(self.gs[i]),
                 nplt = 0,
                 nsct = 0,
+                ncon = 0,
                 xr = (),
                 yr = (),
                 cmapinfo =cmap_basis) for i in range(nrows*ncols)
@@ -205,4 +207,39 @@ class myFigure(object):
         #marker = kwargs['marker'] if 'marker' in keys else 
         ax.scatter(*args, c= m.to_rgba(cidx), **kwargs)
         self._axis_info[ax_idx] = ai._replace(nsct = ai.nsct+1)
+    
+    def density(self, *args, **kwargs):
+        """
+        ax_idx : Int. the index of the axis. default is 0
+        cidx : Int/List. the value for color
+        """
+        keys = kwargs.keys()
+        ax_idx = kwargs['ax_idx']
+        kwargs.pop('ax_idx')
+
+        ai = self._axis_info[ax_idx]
+        ax = ai.ax
+        ci = ai.cmapinfo
+
+        if 'cidx' in keys:
+            cidx = kwargs['cidx']
+            kwargs.pop('cidx')
+        else:
+            cidx = [ai.nsct for _ in range(len(args[0]))]
+
+        norm = Normalize(vmin=ci.vr[0] , vmax = ci.vr[1])
+        m = cm.ScalarMappable(norm=norm, cmap=ci.cmap)
+
+        x, y = args[0], args[1]
+        if len(x)!=len(y):
+            raise IndexError("Length of X and Y don't match")
+        b = binning(x)
+        H, _, _ = np.histogram2d(x, y, bins = b.bins(), density=True)
+        print(np.sum(H))
+
+
+        #marker = kwargs['marker'] if 'marker' in keys else 
+        ax.contour(H, colors= m.to_rgba(cidx), **kwargs)
+        self._axis_info[ax_idx] = ai._replace(ncon = ai.ncon+1)
+        
     
