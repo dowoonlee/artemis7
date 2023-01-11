@@ -5,6 +5,7 @@ from astropy.time import Time
 from datetime import datetime
 import json
 
+
 """
 Concept drift generator (CDG)
 
@@ -15,7 +16,7 @@ Between (time_range[0]~time_range[1]), Drifts take place at 'drfit_time_sequence
 'time_range' and 'drift_time_sequence' support float (mjd) and string (datetime64, yyyy-mm-dd)
 
 Currently (2023-01-06) CDG only support continuous columns and 2type drift mode (base<->drift).
-
+CDG can support continous and discrete columns (2023-01-12)
 
 2. Generation
 X (Data set) is randomly sampled with Gamma distribution (https://en.wikipedia.org/wiki/Gamma_distribution).
@@ -133,6 +134,12 @@ class concept_drift_generator():
             a0 = np.vstack((a0, h0))
             a1 = np.vstack((a1, h1))
         return np.sum(np.abs(a0-a1))/bins/len(a0)
+    
+    @staticmethod
+    def read_info(path, file_name):
+        with open(path+"%s.json"%file_name, "r") as f:
+            file_info = json.load(f)
+        return file_info
     
     def _sanity_check(self, df):
         dropcol = ["y", "time"]
@@ -498,3 +505,4 @@ class concept_drift_generator():
                 json.dump(self.df_info, f)
         print("Done")
         return 
+    
