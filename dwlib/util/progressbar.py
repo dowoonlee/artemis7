@@ -2,9 +2,20 @@ import numpy as np
 import time
 
 class progressbar():
-    def __init__(self, maxV):
+    def __init__(self, maxV, jobname=""):
         self.maxV = maxV
-        self.current_lim = 1
+        self._current_percent = 1
+        self.t0 = time.time()
+        self.jobname = "."*(max([7-len(jobname), 1]))+jobname
+    
+    def reset(self, maxV, jobname=""):
+        self.maxV = maxV
+        self._current_percent = 1
+        self.t0 = time.time()
+        self.jobname = "."*(max([7-len(jobname), 1]))+jobname
+        
+    def start(self):
+        print(self._pout(0), end="")
         self.t0 = time.time()
     
     def _ETA(self, progress):
@@ -19,27 +30,31 @@ class progressbar():
             return "ETA %d:%02d"%(h, m)
         return "ETA %02d:%02d"%(m, s)
 
-    def _pout(self, n, percent, eta_disp=True):
+    def _pout(self, percent, eta_disp=True):
         bk = 4-len(str(int(percent)))
-        n//=2
-        bar = "| "  + "█"*n + "#"*(50-n)
+        bar = "| "  + "█"*int(percent//2) + " "*int(50-percent//2)
         percentage = " "*bk +"%d%%"%percent+ "|"
         if eta_disp:
             eta = self._ETA(percent)
-            return  bar + percentage + eta
-        return bar + percentage
-
-    def start(self):
-        print(self._pout(0, 0), end="")
-        self.t0 = time.time()
+            return  bar + percentage + eta + self.jobname
+        return bar + percentage + self.jobname
 
     def update(self, c):
-        current_progress = c/self.maxV*100
-        if np.ceil(current_progress)>=self.current_lim:
-            print("\r"+self._pout(self.current_lim, current_progress), end="")
-            self.current_lim += 1
+        percent = c/self.maxV*100
+        if np.ceil(percent)>=self._current_percent:
+            print("\r"+self._pout(percent), end="")
+            self._current_percent += 1
 
     def finish(self):
-        print("\r"+self._pout(100, 100, eta_disp=False), end="")
+        print("\r"+self._pout(100, eta_disp=False), end="")
         print(" Finish    ")
         return
+
+# import time
+# n = 100
+# pb = progressbar(n)
+# pb.start()
+# for i in range(n):
+#     pb.update(i)
+#     time.sleep(0.05)
+# pb.finish()

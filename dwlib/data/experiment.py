@@ -8,12 +8,15 @@ sys.path.append('C:\\dev\\dwlib')
 from dwlib.util.progressbar import progressbar
 from dwlib.stats.frechet_inception_distance import FID
 from dwlib.stats.binning import binning
-from dwlib.stats.population_stability_index import population_stability_index as psi
+from dwlib.stats.population_stability_index import population_stability_index as PSI
+from scipy.stats import wasserstein_distance
 
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+
+from sklearn.linear_model import LinearRegression
 
 class experiment():
     def __init__(self, path, file_name, dt):
@@ -22,36 +25,57 @@ class experiment():
         self._file_info = file_info
         self.df = pd.read_csv(path+"%s.csv"%file_info["file"], index_col=0)
         self.dt = dt
+        self.drop_cols = ["time", "y", "drift"]
 
         r_init = 0.7
         t_init = r_init*self._file_info["drift_time"][0] + (1-r_init) * self._file_info["time_range"][0]
         self.df_init = self.df[self.df.time<t_init]
         self.trange = np.arange(int(t_init), int(self.df.time.max()-dt))
         self.time = np.array([self.df[(self.df.time>=t) & (self.df.time<t+self.dt)].time.mean() for t in self.trange])          
+        
+        self.drift = np.array([self.df[(self.df.time>=t) & (self.df.time<t+self.dt)].drift.mean() for t in self.trange]) 
+        self.Tdrift = np.zeros(len(self._file_info["drift_time"]))
+        for idx, Tdrift in enumerate(self._file_info["drift_time"]):
+            absdt = abs(self.time-Tdrift)
+            self.Tdrift[idx] = np.where(absdt==np.min(absdt))[0]
+        self.Tdrift = self.Tdrift.astype(int)
 
-    def rf_init(self):
-        df_init = self.df_init.drop(columns="time")
-        X = df_init.loc[:, df_init.columns != "y"].values
-        y = df_init.y.values
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        model = RandomForestClassifier(max_depth=6)
-        model.fit(X_train,y_train)
-        accruacy = np.zeros(len(self.time))
+    def evaluate(self):
+        df_init = self.df_init.drop(columns=["time", "drift"])
+        X0 = df_init.loc[:, df_init.columns != "y"].values
+        y0 = df_init.y.values
+        X_train, X_test, y_train, y_test = train_test_split(X0, y0, test_size=0.2, random_state=42)
         pb = progressbar(self.trange[-1]-self.trange[0])
         pb.start()
-        for idx, t in enumerate(self.trange):
-            pb.update(idx)
-            df_comp = self.df[(self.df.time>=t) & (self.df.time<t+self.dt)]
-            X, y = df_comp.drop(columns=["time", "y"]).values, df_comp.y.values
-            pred_lr = model.predict(X)
-            accruacy[idx] = accuracy_score(pred_lr, y)*100
-        pb.finish()
-        return accruacy
 
-    def fid(self):
+        if self._file_info["prob_type"] == "classification":
+            model = RandomForestClassifier(max_depth=6)
+            model.fit(X_train,y_train)
+            accuracy = np.zeros(len(self.time))
+            for idx, t in enumerate(self.trange):
+                pb.update(idx)
+                df_comp = self.df[(self.df.time>=t) & (self.df.time<t+self.dt)]
+                X, y = df_comp.drop(columns=self.drop_cols).values, df_comp.y.values
+                pred_lr = model.predict(X)
+                accuracy[idx] = accuracy_score(pred_lr, y)*100
+            pb.finish()
+            self.accuracy = accuracy
+        
+        else:
+            lr = LinearRegression().fit(X_train, y_train)
+            score = np.zeros(len(self.time))
+            for idx, t in enumerate(self.trange):
+                pb.update(idx)
+                df_comp = self.df[(self.df.time>=t) & (self.df.time<t+self.dt)]
+                X, y = df_comp.drop(columns=self.drop_cols).values, df_comp.y.values
+                score[idx] = lr.score(X, y)
+            pb.finish()
+            self.score = score
 
-        def actuator(set1, set2):
+
+    @staticmethod
+    def _actuator(set1, set2):
             b1 = binning(set1[:, 0])
             b2 = binning(set2[:, 0])
             bins = np.max([b1.bins(), b2.bins()])
@@ -69,29 +93,50 @@ class experiment():
                 act2 = np.vstack((act2, h2))
             return FID(act1, act2)
 
+    def fid(self):
+
         fids = np.zeros(len(self.time))
-        X0 = self.df_init.drop(columns=["time", "y"]).values
-        pb = progressbar(self.trange[-1]-self.trange[0])
+        X0 = self.df_init.drop(columns=self.drop_cols).values
+        pb = progressbar(self.trange[-1]-self.trange[0], "FID")
         pb.start()
         for idx, t in enumerate(self.trange):
             pb.update(idx)
             df_comp = self.df[(self.df.time>=t) & (self.df.time<t+self.dt)]
-            X = df_comp.drop(columns=["time", "y"]).values
-            fids[idx] = actuator(X0, X)
+            X = df_comp.drop(columns=self.drop_cols).values
+            fids[idx] = self._actuator(X0, X)
         pb.finish()
-        return fids
 
-    def ks_test(self, average=False):
-        columns = self.df.drop(columns=["time", "y"]).columns
-        dvalue = {"%s_D"%col : np.zeros(len(self.time)) for col in columns}
-        pvalue = {"%s_p"%col : np.zeros(len(self.time)) for col in columns}
-        pb = progressbar(self.trange[-1]-self.trange[0])
+        return fids
+    
+    def wd(self):
+        columns = self.df.drop(columns=self.drop_cols).columns
+        wds = {col : np.zeros(len(self.time)) for col in columns}
+        m, s = {}, {}
+        for col in columns:
+            m[col], s[col] = self.df[col].mean(), self.df[col].std()
+        pb = progressbar(self.trange[-1]-self.trange[0], "WD")
         pb.start()
         for idx, t in enumerate(self.trange):
             pb.update(idx)
             df_comp = self.df[(self.df.time>=t) & (self.df.time<t+self.dt)]
             for col in columns:
-                dvalue["%s_D"%col][idx], pvalue["%s_p"%col][idx] = ks_2samp(self.df_init[col].values, df_comp[col].values)
+                di = (self.df_init[col].values-m[col])/s[col]
+                dc = (df_comp[col].values - m[col])/s[col]
+                wds[col][idx] = wasserstein_distance(di, dc)
+        pb.finish()
+        return wds
+
+    def ks_test(self, average=False):
+        columns = self.df.drop(columns=self.drop_cols).columns
+        dvalue = {col : np.zeros(len(self.time)) for col in columns}
+        pvalue = {col : np.zeros(len(self.time)) for col in columns}
+        pb = progressbar(self.trange[-1]-self.trange[0], "KS")
+        pb.start()
+        for idx, t in enumerate(self.trange):
+            pb.update(idx)
+            df_comp = self.df[(self.df.time>=t) & (self.df.time<t+self.dt)]
+            for col in columns:
+                dvalue[col][idx], pvalue[col][idx] = ks_2samp(self.df_init[col].values, df_comp[col].values)
         pb.finish()
         if average:
             d, p = np.zeros(len(self.time)), np.zeros(len(self.time))
@@ -105,17 +150,17 @@ class experiment():
             return dvalue, pvalue
     
     def psi(self, average=False):
-        columns = self.df.drop(columns=["time", "y"]).columns
+        columns = self.df.drop(columns=self.drop_cols).columns
         psis = {"%s"%col : np.zeros(len(self.time)) for col in columns}
-        X0 = self.df_init.drop(columns=["time", "y"])
-        pb = progressbar(self.trange[-1]-self.trange[0])
+        X0 = self.df_init.drop(columns=self.drop_cols)
+        pb = progressbar(self.trange[-1]-self.trange[0], "PSI")
         pb.start()
         for idx, t in enumerate(self.trange):
             pb.update(idx)
             df_comp = self.df[(self.df.time>=t) & (self.df.time<t+self.dt)]
-            X = df_comp.drop(columns=["time", "y"])
+            X = df_comp.drop(columns=self.drop_cols)
             for col in columns:
-                psis["%s"%col][idx] = psi(X0[col].values, X[col].values)
+                psis["%s"%col][idx] = PSI(X0[col].values, X[col].values)        
         pb.finish()
         if average:
             psi_v = np.zeros(len(self.time))
@@ -123,42 +168,19 @@ class experiment():
                 psi_v += v
             psi_v /= self._file_info["n_cont"]+ self._file_info["n_disc"]
             return psi_v
-        return psis
+        else:
+            return psis
+
+# import matplotlib.pyplot as plt
+# path = "./dwlib/data/generated_table/"
+# file_name = "RI55"
+# ex = experiment(path=path, file_name=file_name, dt=30)
+# d, p = ex.ks_test(average=True)
+# ds, ps = ex.ks_test()
+# fid = ex.fid()
+# psi = ex.psi(average=True)
+# psis = ex.psi()
+# wds = ex.wd()
+# time = Time(ex.time, format="mjd").datetime64
 
 
-
-path = "./dwlib/data/generated_table/"
-file_name = "RI55"
-ex = experiment(path, file_name, 30)
-acc = ex.rf_init()
-d, p = ex.ks_test(average=True)
-fid = ex.fid()
-psi = ex.psi(average=True)
-time = Time(ex.time, format="mjd").datetime64
-
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-
-def nrow_plot(time, acc, data_dict):
-    nr = len(data_dict.keys())
-
-    plt.figure(figsize=(15, nr*2+1))
-    gs = GridSpec(nrows=nr, ncols=1)
-    gs.update(hspace=0, wspace=0)
-    axes= [plt.subplot(gs[i]) for i in range(nr)]
-    for idx, (k, v) in enumerate(data_dict.items()):
-        axes[idx].plot(time, v, label=k)
-    drift = ex._file_info["drift_time"]
-    for ax in axes:
-        axt = plt.twinx(ax)
-        axt.plot(time, acc, c='gray', alpha=0.3)
-        ax.grid(True)
-        ax.set_xlim(time[0], time[-1])
-        ax.legend(loc=1)
-        ax.vlines(Time(np.array(drift), format="mjd").datetime64, ax.set_ylim()[0], ax.set_ylim()[1], colors='r', linestyles=":")
-    plt.show()
-
-nrow_plot(time, acc, {"fid": fid,
-                      "D-statistics" : d,
-                      "p-value": p,
-                      "PSI": psi})

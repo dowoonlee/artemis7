@@ -4,7 +4,9 @@ from numpy.random import choice, rand, gamma, randint
 from astropy.time import Time
 from datetime import datetime
 import json
-
+import sys
+sys.path.append('C:\\dev\\dwlib')
+from dwlib.util.progressbar import progressbar
 
 """
 Concept drift generator (CDG)
@@ -36,11 +38,11 @@ The difference between them is that "incremental" has gentle drift in time inter
 """
 
 class concept_drift_generator():
-    def __init__(self, time_range, drift_time_sequence, n_drift_type, n_cont, n_disc, **kwargs):
+    def __init__(self, time_range, drift_time_sequence, prob_type, n_cont, n_disc, **kwargs):
         """
         time_range : array-like. 데이터셋의 시작시간과 끝시간. (start, end)형태로 입력.
         drift_time_sequence : array-like. drift가 작동하는 시간.
-        n_drift_type : Integer. drift 종류의 갯수(현재 2 (base<->drift)까지만 지원)
+        prob_type : [classification / regression] y의 type
         n_cont : 연속데이터 컬럼의 갯수
         n_disc : 불연속데이터 컬럼의 갯수
         size : Integer. data point 갯수
@@ -64,19 +66,27 @@ class concept_drift_generator():
         else:
             raise AssertionError("Absence in time binning")
         
+        self._drift_weight = np.zeros(len(self.time))
+        
         self._ncol = (n_cont, n_disc)
+        self.n_att = kwargs["n_att"] if "n_att" in keys else sum(self._ncol)//2
 
         if sum(self._ncol)<=0:
             raise ValueError("At least 1 column should be exist")
 
         tol = 1e-6
         self._drift_sequence = np.sort(np.concatenate((drift_time_sequence, [time_range[1]+tol , time_range[0]-tol]), axis=0))
-        self.n_drift_type = np.min([n_drift_type, len(drift_time_sequence), 2])
+        self.prob_type = prob_type
+        yfunction = {
+            "classification" : self._classfication,
+            "regression" : self._regression}
+        self._label_function = yfunction[self.prob_type]
         self.noise = 0
         self.attribute_columns = []
         self.df = None
         self.df_info = {
             "file" : None,
+            "prob_type" : self.prob_type,
             "date_generated" : None,
             "time_range" : time_range,
             "drift_time" : drift_time_sequence,
@@ -94,6 +104,12 @@ class concept_drift_generator():
         X = X[:, att_cols]
         sumX = np.sum(X, axis=1)
         return (sumX>threshold).astype(np.int32)
+
+    @staticmethod
+    def _regression(X, att_cols, threshold):
+        X = X[:, att_cols]
+        sumX = np.sum(X, axis=1)
+        return sumX+threshold
     
     @staticmethod
     def _discrete_sampling(sample, pdf, size):
@@ -162,22 +178,39 @@ class concept_drift_generator():
         pos = np.where(pos<=self.noise)[0]
         base_col[pos] = base_col[pos]*np.random.normal(loc=1, size=len(pos))
         return base_col
+    
+    def _add_noise_disc(self, base_col):
+        pos = np.random.random(self._size)
+        pos = np.where(pos<=self.noise)[0]
+        uniq = np.unique(base_col)
+        for p in pos:
+            base_col[p] = np.random.choice(uniq)
+        return base_col
+
 
     def _real_sudden(self, base, thresholds, att_cols):
         y = np.array([])
+        pb = progressbar(len(self._drift_sequence)-1, "CDG")
+        pb.start()
         for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
-                X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
-                threshold = thresholds[idx%2]
-                yadd = self._classfication(X = X,
-                                        att_cols = att_cols,
-                                        threshold = threshold)
-                y = np.concatenate((y,yadd),axis=0)
+            pb.update(idx)
+            X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
+            threshold = thresholds[idx%2]
+            yadd = self._label_function(X = X,
+                                    att_cols = att_cols,
+                                    threshold = threshold)
+            y = np.concatenate((y,yadd),axis=0)
+            self._drift_weight[np.where((self.time>ts)&(self.time<=te))[0]] = idx%2
+        pb.finish()
+        base["drift"] = self._drift_weight
         base["y"] = y
         return base
     
     def _real_incremental(self, base, thresholds, att_cols):
         y = np.array([])
         on_drift = False
+        pb = progressbar(len(base.time.values), "CDG")
+        pb.start()
         for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
             X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
 
@@ -190,26 +223,32 @@ class concept_drift_generator():
             pre_pivot = cur_interval[int(itv_len*0.3)]
             suf_pivot = cur_interval[int(itv_len*0.7)]
 
-            for c, idx in enumerate(cur_interval):
-                if idx<pre_pivot:
+            for c, i in enumerate(cur_interval):
+                pb.update(i)
+                if i<pre_pivot:
                     bef = (l-c)/(2*l)
-                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
                 else:
                     bef = 0
                 X_sub = X[c, :].reshape(1, -1)
                 threshold = threshold_bef*bef + threshold_now*(1-bef)
-                yadd = self._classfication(X = X_sub,
+                yadd = self._label_function(X = X_sub,
                                     att_cols = att_cols,
                                     threshold = threshold)
                 y = np.concatenate((y,yadd),axis=0)
+                self._drift_weight[i] = 1-bef if on_drift else bef
             on_drift = not on_drift
+        pb.finish()
+        base["drift"] = self._drift_weight
         base["y"] = y
         return base
     
     def _real_gradual(self, base, thresholds, att_cols):
         y = np.array([])
         on_drift = False
+        pb = progressbar(len(base.time.values), "CDG")
+        pb.start()
         for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
             X = base[(base.time>ts) & (base.time<=te)].drop(columns="time").to_numpy()
 
@@ -222,20 +261,25 @@ class concept_drift_generator():
             pre_pivot = cur_interval[int(itv_len*0.3)]
             suf_pivot = cur_interval[int(itv_len*0.7)]
 
-            for c, idx in enumerate(cur_interval):
-                if idx<pre_pivot:
+            for c, i in enumerate(cur_interval):
+                pb.update(i)
+                if i<pre_pivot:
                     bef = (l-c)/(2*l)
-                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
                 else:
                     bef = 0
                 X_sub = X[c, :].reshape(1, -1)
-                threshold = threshold_bef if np.random.random()<=bef else threshold_now
-                yadd = self._classfication(X = X_sub,
+                cho = np.random.random()<=bef
+                threshold = threshold_bef if cho else threshold_now
+                yadd = self._label_function(X = X_sub,
                                     att_cols = att_cols,
                                     threshold = threshold)
                 y = np.concatenate((y,yadd),axis=0)
+                self._drift_weight[i] = 1-int(cho) if on_drift else int(cho)
             on_drift = not on_drift
+        pb.finish()
+        base["drift"] = self._drift_weight
         base["y"] = y
         return base
     
@@ -248,7 +292,7 @@ class concept_drift_generator():
         base_pdf = [rand(len(samples[i])) for i in range(n_disc)]
 
         base = {"time" : self.time}
-        attribute_cols = choice(np.arange(np.sum(ncol)), np.sum(ncol)//2, replace=False)
+        attribute_cols = choice(np.arange(np.sum(ncol)), self.n_att, replace=False)
 
         self.attribute_columns = np.sort(attribute_cols)
         dumx = np.zeros(self._size) #rename
@@ -289,23 +333,31 @@ class concept_drift_generator():
     
     def _virtual_sudden(self, base, drift_coeff, samples, base_pdf, drift_pdf):
         on_drift=False
+        pb = progressbar(len(self._drift_sequence)-1, "CDG")
+        pb.start()
         for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
+            pb.update(idx)
             cond = (base.time>ts) & (base.time<=te)
             sub_size = np.sum(cond.to_numpy())
             if on_drift:
-                for idx, (k, theta) in enumerate(drift_coeff):
+                for i, (k, theta) in enumerate(drift_coeff):
                     temp_g = gamma(k, theta, sub_size)
-                    base.loc[cond, "C%02d"%idx] = temp_g
+                    base.loc[cond, "C%02d"%i] = temp_g
                 
-                for idx in range(len(samples)):
-                    sample, pdf = samples[idx], drift_pdf[idx]
+                for i in range(len(samples)):
+                    sample, pdf = samples[i], drift_pdf[i]
                     temp_d = self._discrete_sampling(sample, pdf, sub_size)
-                    base.loc[cond, "D%02d"%idx] = temp_d
+                    base.loc[cond, "D%02d"%i] = temp_d
+
+            self._drift_weight[np.where((self.time>ts)&(self.time<=te))[0]] = idx%2
             on_drift = not on_drift
+        pb.finish()
         return base
     
     def _virtual_incremental(self, base, base_coeff, drift_coeff, samples, base_pdf, drift_pdf):
         on_drift=False
+        pb = progressbar(len(base.time.values), "CDG")
+        pb.start()
         for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
             coeff_now = base_coeff if on_drift else drift_coeff
             coeff_bef = drift_coeff if on_drift else base_coeff
@@ -319,30 +371,36 @@ class concept_drift_generator():
             pre_pivot = cur_interval[int(itv_len*0.3)]
             suf_pivot = cur_interval[int(itv_len*0.7)]
 
-            for c, idx in enumerate(cur_interval):
-                if idx<pre_pivot:
+            for c, i in enumerate(cur_interval):
+                pb.update(i)
+                if i<pre_pivot:
                     bef = (l-c)/(2*l)
-                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
                 else:
                     bef = 0                    
                 coeffs = coeff_bef*bef + coeff_now*(1-bef)
                 X_sub = np.array([gamma(k, theta) for k, theta in coeffs])
-                for i, x in enumerate(X_sub):
-                    base.loc[idx, "C%02d"%i] = x
+                for j, x in enumerate(X_sub):
+                    base.loc[i, "C%02d"%j] = x
 
                 pdfs_ = [pdf_bef[i] * bef + pdf_now[i] * (1-bef) for i in range(len(pdf_bef))]
                 X_sub = np.array([
                     self._discrete_sampling(sample, pdf, 1) for sample, pdf in zip(samples, pdfs_)
                     ])
-                for i, x in enumerate(X_sub):
-                    base.loc[idx, "D%02d"%i] = x
+                for j, x in enumerate(X_sub):
+                    base.loc[i, "D%02d"%j] = x
+
+                self._drift_weight[i] = 1-bef if on_drift else bef
                 
             on_drift = not on_drift
+        pb.finish()
         return base
     
     def _virtual_gradual(self, base, base_coeff, drift_coeff, samples, base_pdf, drift_pdf):
         on_drift=False
+        pb = progressbar(len(base.time.values), "CDG")
+        pb.start()
         for idx, (ts, te) in enumerate(zip(self._drift_sequence[:-1], self._drift_sequence[1:])):
             coeff_now = base_coeff if on_drift else drift_coeff
             coeff_bef = drift_coeff if on_drift else base_coeff
@@ -356,26 +414,32 @@ class concept_drift_generator():
             pre_pivot = cur_interval[int(itv_len*0.3)]
             suf_pivot = cur_interval[int(itv_len*0.7)]
 
-            for c, idx in enumerate(cur_interval):
-                if idx<pre_pivot:
+            for c, i in enumerate(cur_interval):
+                pb.update(i)
+                if i<pre_pivot:
                     bef = (l-c)/(2*l)
-                elif idx>suf_pivot and te != self._drift_sequence[-1]:
+                elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
                 else:
                     bef = 0
-                coeffs = coeff_bef if np.random.random()<=bef else coeff_now
+                
+                cho = np.random.random()<=bef
+                coeffs = coeff_bef if cho else coeff_now
                 X_sub = np.array([gamma(k, theta) for k, theta in coeffs])
-                for i, x in enumerate(X_sub):
-                    base.loc[idx, "C%02d"%i] = x
+                for j, x in enumerate(X_sub):
+                    base.loc[i, "C%02d"%j] = x
 
                 pdfs_ = [pdf_bef[i]*bef + pdf_now[i]*(1-bef) for i in range(len(pdf_bef))]
                 X_sub = np.array([
                     self._discrete_sampling(sample, pdf, 1) for sample, pdf in zip(samples, pdfs_)
                     ])
-                for i, x in enumerate(X_sub):
-                    base.loc[idx, "D%02d"%i] = x
+                for j, x in enumerate(X_sub):
+                    base.loc[i, "D%02d"%j] = x
+
+                self._drift_weight[i] = 1-int(cho) if on_drift else int(cho)
 
             on_drift = not on_drift
+        pb.finish()
         return base
     
     def _generate_virtual(self, ncol, strength, drift_type="sudden"):
@@ -386,7 +450,7 @@ class concept_drift_generator():
 
         base = {"time" : self.time}
         dumx = np.zeros(self._size) #rename
-        attribute_cols = choice(np.arange(sum(ncol)), sum(ncol)//2, replace=False)
+        attribute_cols = choice(np.arange(sum(ncol)), self.n_att, replace=False)
         self.attribute_columns = np.sort(attribute_cols)
 
         ### generate base continous columns
@@ -427,10 +491,11 @@ class concept_drift_generator():
         else:
             raise KeyError("There is no such type of drift [%s]"%drift_type)
         
-        y = self._classfication(X = df.drop(columns="time").to_numpy(),
+        y = self._label_function(X = df.drop(columns="time").to_numpy(),
                                 att_cols = attribute_cols,
                                 threshold = threshold)
         df["y"] = y
+        df["drift"] = self._drift_weight
 
         return df
 
@@ -462,6 +527,8 @@ class concept_drift_generator():
         if self.noise>0:
             for col in range(self._ncol[0]):
                 df["C%02d"%col] = self._add_noise_cont(df["C%02d"%col].to_numpy())
+            for col in range(self._ncol[1]):
+                df["D%02d"%col] = self._add_noise_disc(df["D%02d"%col].to_numpy())
         
         self.df_info["strength"] = strength
         self.df_info["noise"] = noise
@@ -489,6 +556,7 @@ class concept_drift_generator():
         self.df.to_csv(path+"/%s.csv"%file_name)
 
         if file_info:
+            self.df_info["prob_type"] = self.prob_type
             if time_format == "datetime64":
                 self.df_info["time_range"] = str(Time(self.df_info["time_range"]).datetime64).tolist()
                 self.df_info["drift_time"] = str(Time(self.df_info["drift_time"]).datetime64).tolist()

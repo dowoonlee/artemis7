@@ -1,0 +1,1 @@
+{"file": "CVS55", "prob_type": "classification", "date_generated": "2023-01-19 15:15:49.374590", "time_range": [55927.0, 58849.0], "drift_time": [57388.0], "n_cont": 5, "n_disc": 5, "drift": "virtual", "drift_type": "sudden", "strength": 50, "noise": 0.1, "att_cols": [0, 1, 2, 5, 6]}
