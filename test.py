@@ -21,7 +21,7 @@ from dwlib.stats.population_stability_index import population_stability_index
 
 prob_type = "classification"
 time_range = ["2012-01-01", "2020-01-01"]
-drift_time_seq = ["2016-01-01"]
+drift_time_seq = ["2016-01-01"] 
 size = int(Time(time_range[1]).mjd - Time(time_range[0]).mjd)
 n_cont, n_disc = 5, 5
 strength = 50
