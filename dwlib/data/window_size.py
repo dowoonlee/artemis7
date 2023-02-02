@@ -198,7 +198,6 @@ class WindowSize():
             scores.append(np.mean(sub_scores))
         scores = np.array(scores)
         cycles = np.array(cycles)
-
         cycles = cycles[scores>score_crit]
         scores = scores[scores>score_crit]
 

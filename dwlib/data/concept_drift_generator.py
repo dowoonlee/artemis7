@@ -4,9 +4,9 @@ from numpy.random import choice, rand, gamma, randint
 from astropy.time import Time
 from datetime import datetime
 import json
-import sys
-sys.path.append('C:\\dev\\dwlib')
-from dwlib.util.progressbar import progressbar
+import sys, os
+sys.path.append("/".join(os.path.abspath(__file__).split("\\")[:-3]))
+from datagenerator.util.progressbar import progressbar
 
 """
 Concept drift generator (CDG)
@@ -17,8 +17,9 @@ Concept drift generator (CDG)
 Between (time_range[0]~time_range[1]), Drifts take place at 'drfit_time_sequence'.
 'time_range' and 'drift_time_sequence' support float (mjd) and string (datetime64, yyyy-mm-dd)
 
-Currently (2023-01-06) CDG only support continuous columns and 2type drift mode (base<->drift).
+CDG only support continuous columns and 2type drift mode (base<->drift) (2023-01-06).
 CDG can support continous and discrete columns (2023-01-12)
+CDG supports regression prob type (2023-01-19)
 
 2. Generation
 X (Data set) is randomly sampled with Gamma distribution (https://en.wikipedia.org/wiki/Gamma_distribution).
@@ -225,7 +226,7 @@ class concept_drift_generator():
 
             for c, i in enumerate(cur_interval):
                 pb.update(i)
-                if i<pre_pivot:
+                if i<pre_pivot and ts != self._drift_sequence[0]:
                     bef = (l-c)/(2*l)
                 elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
@@ -263,7 +264,7 @@ class concept_drift_generator():
 
             for c, i in enumerate(cur_interval):
                 pb.update(i)
-                if i<pre_pivot:
+                if i<pre_pivot and ts != self._drift_sequence[0]:
                     bef = (l-c)/(2*l)
                 elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
@@ -373,7 +374,7 @@ class concept_drift_generator():
 
             for c, i in enumerate(cur_interval):
                 pb.update(i)
-                if i<pre_pivot:
+                if i<pre_pivot and ts != self._drift_sequence[0]:
                     bef = (l-c)/(2*l)
                 elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
@@ -416,7 +417,7 @@ class concept_drift_generator():
 
             for c, i in enumerate(cur_interval):
                 pb.update(i)
-                if i<pre_pivot:
+                if i<pre_pivot and ts != self._drift_sequence[0]:
                     bef = (l-c)/(2*l)
                 elif i>suf_pivot and te != self._drift_sequence[-1]:
                     bef = (l-(itv_len-c))/(2*l)
@@ -550,8 +551,8 @@ class concept_drift_generator():
         if self.df is None:
             raise FileNotFoundError("Data yet been generated")
         if file_name is None:
-            tp = self.df_info["drift"][0] + self.df_info["drift_type"][0]
-            file_name = "%s_%s"%(tp, datetime.now().strftime("%Y%m%d%H%M%S"))
+            tp = self.df_info["prob_type"][0]+self.df_info["drift"][0] + self.df_info["drift_type"][0]
+            file_name = "%s_%s"%(tp.upper(), datetime.now().strftime("%Y%m%d%H%M%S"))
 
         self.df.to_csv(path+"/%s.csv"%file_name)
 
