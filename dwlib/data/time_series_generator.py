@@ -6,7 +6,7 @@ from numpy.random import uniform, normal, gamma, randn
 from scipy.special import gamma as gamma_func
 import sys, os
 sys.path.append("/".join(os.path.abspath(__file__).split("\\")[:-3]))
-from datagenerator.util.progressbar import progressbar
+from dwlib.util.progressbar import progressbar
 from scipy.signal import savgol_filter
 from datetime import datetime
 
