@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
+from stats.binning import *
 
 def isdiscrete(x):
     if isinstance(x, pd.Series):
@@ -9,7 +10,7 @@ def isdiscrete(x):
         x = np.array(x)
     
     nuniq = len(np.unique(x))
-    nbin = int(1+3.322*np.log10(len(x)))
+    nbin = sturges(x)
     if nuniq < nbin:
         return True
     else:
@@ -30,7 +31,7 @@ class MVSampler():
         del inference
         self.target_cols = target_cols
 
-        bins = int(1+3.322*np.log10(self.inference.shape[0]))
+        bins = sturges(self.inference.shape[0])
         for col in self.target_cols:
             inf = self.inference[col].to_numpy()
             if isdiscrete(inf): #해당 column이 discrete 하다면

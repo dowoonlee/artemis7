@@ -2,10 +2,9 @@ import numpy as np
 from dwlib.util.make_movie import make_movie
 from dwlib.datagenerator.virtual_drift_generator import concept_drift_generator
 from dwlib.stats.frechet_inception_distance import FID
-from dwlib.stats.binning import binning
+from dwlib.stats.binning import *
 import matplotlib.pyplot as plt
 from astropy.time import Time
-import pandas as pd
 
 
 time_range = ["2012-01-01", "2020-01-01"]
@@ -25,8 +24,8 @@ cdg.save_to_csv("./dwlib/data/generated_table/")
 
 def actuator(dset1, dset2):
     norm=True
-    b1 = binning(dset1[:,0])
-    b2 = binning(dset2[:,0])
+    b1 = sturges(dset1[:,0])
+    b2 = sturges(dset2[:,0])
     bins = np.max([b1.bins(), b2.bins()])
 
     xr = (np.min([dset1[:, 0].min(), dset2[:, 0].min()]), np.max([dset1[:, 0].max(), dset2[:, 0].max()]))

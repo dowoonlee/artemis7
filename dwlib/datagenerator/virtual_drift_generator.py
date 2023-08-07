@@ -4,8 +4,8 @@ from numpy.random import choice, rand, gamma, randint
 from astropy.time import Time
 from datetime import datetime
 import json
-import sys, os
-sys.path.append("/".join(os.path.abspath(__file__).split("\\")[:-3]))
+from stats.binning import *
+
 """
 Concept drift generator (CDG)
 
@@ -136,8 +136,8 @@ class concept_drift_generator():
         v0 = df0.drop(columns=dropcol).to_numpy()
         v1 = df1.drop(columns=dropcol).to_numpy()
         
-        b0 = int(1+3.322*np.log2(len(v0[:, 0])))
-        b1 = int(1+3.322*np.log2(len(v1[:, 0])))
+        b0 = sturges(v0[:, 0])
+        b1 = sturges(v1[:, 0])
         bins = np.max([b0, b1])
 
         xr = (np.min([v0[:, 0].min(), v1[:, 0].min()]), np.max([v0[:, 0].max(), v1[:, 0].max()]))

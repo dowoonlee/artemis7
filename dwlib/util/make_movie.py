@@ -1,5 +1,5 @@
 import imageio
-import glob, os
+import os
 
 class make_movie():
     def __init__(self, path, extension):

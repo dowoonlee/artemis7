@@ -15,7 +15,10 @@ def __getBin(rule, x, axis):
 
 def sturges(x, axis=None):
     def __sturges(x):
-        n = len(x)
+        if np.ndim(x)==0:
+            n = x
+        else:
+            n = len(x)
         return int(1+3.322*np.log10(n))
     return __getBin(__sturges, x, axis)
 

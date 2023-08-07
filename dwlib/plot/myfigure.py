@@ -3,7 +3,7 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 from collections import namedtuple
-from dwlib.stats.binning import binning
+from dwlib.stats.binning import *
 
 import numpy as np
 CmapInfo = namedtuple('CmapInfo', [
@@ -233,8 +233,7 @@ class myFigure(object):
         x, y = args[0], args[1]
         if len(x)!=len(y):
             raise IndexError("Length of X and Y don't match")
-        b = binning(x)
-        H, _, _ = np.histogram2d(x, y, bins = b.bins(), density=True)
+        H, _, _ = np.histogram2d(x, y, bins = sturges(x), density=True)
         print(np.sum(H))
 
 
