@@ -1,1 +1,0 @@
-{"file": "RVG55", "prob_type": "regression", "date_generated": "2023-01-19 15:19:16.914628", "time_range": [55927.0, 58849.0], "drift_time": [57388.0], "n_cont": 5, "n_disc": 5, "drift": "virtual", "drift_type": "gradual", "strength": 5, "noise": 0.1, "att_cols": [2, 4, 5, 7, 9]}
