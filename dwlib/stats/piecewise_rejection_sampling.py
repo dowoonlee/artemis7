@@ -18,7 +18,7 @@ class PRS():
         index : return index rather value. Default is False
         """
 
-        y, _ = np.hisogram(data, bins=self._bins, range=self._xrange, density=True)
+        y, _ = np.histogram(data, bins=self._bins, range=self._xrange, density=True)
         X_max_bin = np.where(self._wi == np.max(self._wi))[0]
         n_limit = int(len(self.X) * y[X_max_bin] / self._wi[X_max_bin]*0.9)
         n = np.min([n, n_limit])
@@ -35,7 +35,7 @@ class PRS():
             if len(sample_area):
                 sampled_idx = np.random.choice(sample_area)
                 if index:
-                    result[cnt] = sampled_idx
+                    result[cnt] = sampled_idx.astype(np.int64)
                 else:
                     result[cnt] = data[sampled_idx]
                 cnt += 1
