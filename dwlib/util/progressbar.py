@@ -9,14 +9,8 @@ class progressbar():
         self.maxV = maxV
         self._current_percent = 1
         self.t0 = time.time()
-        self.banner_size = 10
-        self.jobname = "."*(max([self.banner_size-len(jobname), 1]))+jobname
-    
-    def reset(self, maxV, jobname=""):
-        self.maxV = maxV
-        self._current_percent = 1
-        self.t0 = time.time()
-        self.jobname = "."*(max([self.banner_size-len(jobname), 1]))+jobname
+        self._banner_size = 10
+        self.jobname = "."*(max([self._banner_size-len(jobname), 1]))+jobname
         
     def start(self):
         print(self._pout(0), end="")
@@ -47,20 +41,20 @@ class progressbar():
         percent = c/self.maxV*100
         if abs(self.maxV-c) <= 1:
             self.__del__()
-        elif np.ceil(percent)>=self._current_percent:
+        if np.ceil(percent)>=self._current_percent:
             print("\r"+self._pout(percent), end="")
             self._current_percent = percent
     
     def __del__(self):
-        print("\r"+self._pout(100, eta_disp=False), end="")
+        print("\r"+self._pout(100, eta_disp=True), end="")
 
 
 
-# import time
-# n = 100
-# pb = progressbar(n)
-# pb.start()
-# for i in range(n):
-#     pb.update(i)
-#     time.sleep(0.05)
-# pb.finish()
+import time
+n = 50
+pb = progressbar(n, "hi")
+pb.start()
+for i in range(n):
+    pb.update(i)
+    time.sleep(0.05)
+
