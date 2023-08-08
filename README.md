@@ -5,7 +5,7 @@
 - datagenerator
     - virtual_drift_generator.py
 - plot
-    - myfigure.py
+    - under development
 - stats
     - binning.py
     - frechet_inception_distance.py
