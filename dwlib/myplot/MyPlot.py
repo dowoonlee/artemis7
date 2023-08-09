@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from matplotlib.colors import Normalize
+import matplotlib.font_manager as fm
+# import matplotlib.cm as cm
+# from matplotlib.colors import Normalize
+from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 
 import numpy as np
 import sys
@@ -26,10 +28,10 @@ def number_density(ax, x, y, **kwargs):
     ax.grid()
     return
 
-def hist_density(axc, axu, axr, x, y):
+def number_density_histxy(axc, axu, axr, x, y):
     bin = sturges(x)
     axc = number_density(axc, x, y)
-    
+
     axu.hist(x, bins= bin, range=(np.min(x), np.max(x)), histtype="step", color="k")
     axu.set_xlim(np.min(x), np.max(x))
     axu.grid(axis="x")
@@ -44,9 +46,46 @@ def hist_density(axc, axu, axr, x, y):
     return
 
 
+def bubble_diagram(ax, x, y, w, **kwargs):
+    minS, maxS = 5, 200
+    scale = (w - np.min(w))/(np.max(w)-np.min(w))
+    scale *= (maxS- minS)
+    scale += minS
+
+    ax.scatter(x, y, s= scale, facecolor="None", edgecolor="k", **kwargs)
+    ax.grid()
+    return
+
+def legend(ax, **kwargs):
+    legend_kwargs = {
+                'fontsize' : 12,
+                'framealpha' : 0.9,
+                'facecolor' : "w",
+                'edgecolor' : 'k',
+                'shadow' : False,
+                'labelspacing' : 0.1,
+            }
+    font = fm.FontProperties(family='monospace', weight="light", style="normal", size=12)
+    ax.legend(**kwargs, **legend_kwargs, prop=font)
 
 
-
-
-
+def set_minorticks(ax, axis="both", **kwargs):
+    def xaxis(ax):
+        majorticks = ax.get_xticks()
+        minorbin = abs(majorticks[1]-majorticks[0])/5
+        ax.xaxis.set_minor_locator(MultipleLocator(minorbin))
+        return
+    def yaxis(ax):
+        majorticks = ax.get_yticks()
+        minorbin = abs(majorticks[1]-majorticks[0])/5
+        ax.yaxis.set_minor_locator(MultipleLocator(minorbin))
+    if axis == "x":
+        xaxis(ax)
+    elif axis == "y":
+        yaxis(ax)
+    else:
+        xaxis(ax)
+        yaxis(ax)
+    return
+    
 

@@ -4,14 +4,14 @@ from matplotlib.gridspec import GridSpec
 import numpy as np
 
 
-x = np.random.normal(size= 1000, loc = 2)
-y = np.random.normal(size= 1000)
+x = np.random.normal(size= 100, loc = 2)
+y = np.random.normal(size= 100)
+w = np.random.normal(size= 100, scale=10)
 
 fig = plt.figure(figsize=(5, 5))
-gs = GridSpec(nrows=3, ncols=3, hspace=0, wspace=0)
-axc = plt.subplot(gs[1:, :2])
-axu = plt.subplot(gs[0, :2])
-axr = plt.subplot(gs[1:, 2])
-mp.hist_density(axc, axu, axr, x, y)
+ax = plt.subplot()
+mp.bubble_diagram(ax, x, y, w, label="bubble")
+mp.legend(ax)
+mp.set_minorticks(ax)
 plt.show()
 
