@@ -43,6 +43,3 @@ def freedman_diaconis(x, axis=None):
         iqr = np.percentile(x, 75) - np.percentile(x, 25)
         return int(2*iqr/(n**(1/3)))
     return __getBin(__freedman_diaconis, x, axis)
-
-
-    

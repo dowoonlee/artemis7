@@ -1,13 +1,52 @@
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
-# import matplotlib.cm as cm
-# from matplotlib.colors import Normalize
+import matplotlib.cm as cm
+from matplotlib.colors import Normalize
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import numpy as np
 import sys
 sys.path.append(sys.path[0]+"/..")
 from stats.binning import *
+
+## init ##
+plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams["xtick.labelsize"] = 12
+plt.rcParams["ytick.labelsize"] = 12
+
+
+def plot(ax, xy, **kwargs):
+    m = cm.ScalarMappable(norm = Normalize(vmin = 0, vmax = len(xy)), cmap=plt.get_cmap("viridis"))
+    xr, yr = (np.inf, -np.inf), (np.inf, -np.inf)
+    for i, line in enumerate(xy):
+        args = {k:v[i] for k, v in kwargs.items()}
+        ax.plot(*line, color="w", linewidth=3)
+        ax.plot(*line, **args, color=m.to_rgba(i))
+        xr = (np.min([xr[0], line[0].min()]), np.max([xr[1], line[0].max()]))
+        yr = (np.min([yr[0], line[1].min()]), np.max([yr[1], line[1].max()]))
+    ax.grid()
+    ax.set_xlim(xr[0], xr[1])
+    ax.set_ylim(yr[0], yr[1])
+    return
+
+def colored_scatter(ax, x, y, c):
+    m = cm.ScalarMappable(norm = Normalize(vmin = np.min(c), vmax = np.max(c)), cmap=plt.get_cmap("viridis"))
+    ax.scatter(x, y, facecolor=m.to_rgba(c), edgecolor="k", alpha=0.5)
+    axins = inset_axes(
+        ax,
+        width = "20%",
+        height= "3%",
+        loc=3
+    )
+    plt.colorbar(m, cax = axins, orientation = "horizontal", ticks=[np.min(c), np.max(c)])
+    axins.xaxis.set_ticks_position("top")
+
+    ax.grid()
+    ax.set_xlim(np.min(x), np.max(x))
+    ax.set_ylim(np.min(y), np.max(y))
+    return
+
 
 def number_density(ax, x, y, **kwargs):
     bin = sturges(x)
@@ -19,8 +58,8 @@ def number_density(ax, x, y, **kwargs):
 
     lv = np.array([img_sorted_1d[np.where(img_cs > level)[0][0]] for level in sigma_ratio.keys()])
     
-    ax.contourf(img.T, extent = ext, cmap=plt.get_cmap("cubehelix_r"), alpha=0.7, vmin = np.percentile(img_sorted_1d, 68), vmax= img_sorted_1d.max())
-    cs = ax.contour(img.T, extent = ext, levels = lv, colors='k')
+    ax.contourf(img.T, extent = ext, cmap=plt.get_cmap("cubehelix_r"), alpha=0.7, vmin = np.percentile(img_sorted_1d, 68), vmax= img_sorted_1d.max(), origin="lower")
+    cs = ax.contour(img.T, extent = ext, levels = lv, colors='k', origin="lower")
     plt.clabel(cs, levels=lv, fontsize=10, fmt={l:v for (l, v) in zip(lv, sigma_ratio.values())})
     ax.scatter(np.mean(x), np.mean(y), marker="x", color="w", s= 50)
     ax.set_xlim(np.min(x), np.max(x))
@@ -65,8 +104,12 @@ def legend(ax, **kwargs):
                 'shadow' : False,
                 'labelspacing' : 0.1,
             }
-    font = fm.FontProperties(family='monospace', weight="light", style="normal", size=12)
-    ax.legend(**kwargs, **legend_kwargs, prop=font)
+    ax.legend(**kwargs, **legend_kwargs)
+
+def set_background(ax, **kwargs):
+    ax.patch.set_facecolor('skyblue')
+    ax.patch.set_alpha(0.05)
+    return
 
 
 def set_minorticks(ax, axis="both", **kwargs):
