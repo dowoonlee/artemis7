@@ -6,7 +6,7 @@ setup(
     description='Personal library to compute and draw',
     url ='https://github.com/dowoonlee/dwlib.git',
     author='dwlee',
-    author_email='',
+    author_email='dwlee717@gmail.com',
     license='dwlee',
     packages=['dwlib'],
     zip_safe=False,

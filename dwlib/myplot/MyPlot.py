@@ -130,5 +130,20 @@ def set_minorticks(ax, axis="both", **kwargs):
         xaxis(ax)
         yaxis(ax)
     return
+
+def adjust_tickposition(ax, loc, **kwargs):
+    """
+        261
+        795
+        384
+    """
+    if loc == 1 or loc == 2 or loc == 6:
+        ax.xaxis.tick_top()
+        ax.xaxis.set_label_position('top')
+    if loc == 1 or loc == 5 or loc == 4:
+        ax.yaxis.tick_right()
+        ax.yaxis.set_label_position('right')
+    return
+
     
 
