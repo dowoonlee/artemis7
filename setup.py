@@ -1,8 +1,8 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name = 'dwlib',
-    version='0.0.2',
+    version='0.0.3',
     description='Personal library to compute and draw',
     url ='https://github.com/dowoonlee/dwlib.git',
     author='dwlee',
