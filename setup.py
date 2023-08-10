@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'dwlib',
-    version='0.0.1',
+    version='0.0.2',
     description='Personal library to compute and draw',
     url ='https://github.com/dowoonlee/dwlib.git',
     author='dwlee',
