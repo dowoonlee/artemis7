@@ -1,11 +1,16 @@
 # DWLIB
 
-## Personal library to compute and draw
+## Library for computing and drawing
+
+This library is pre-released. you can install dwlib from PyPI with `pip`:
+```bash
+pip install dwlib
+```
 
 - datagenerator
   - virtual_drift_generator.py
 - myplot
-  - under development
+  - MyPlot.py
 - stats
   - binning.py
     - Sturges' Formula : [Sturges, H. A. (1926)](https://www.tandfonline.com/doi/abs/10.1080/01621459.1926.10502161)
@@ -16,5 +21,7 @@
   - piecewise_rejection_sampling.py : [Credit](https://axect.github.io/posts/006_prs/)
   - multivariate_sampling.py
 - util
+  - colorprint.py
+  - funtion_list.py
   - make_movie.py
   - progressbar.py

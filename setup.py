@@ -2,9 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'dwlib',
-    version='0.0.5',
+    version='0.0.6',
     description='Personal library to compute and draw',
-    long_description = open("long_description.rst").read(),
+    long_description = open("README.md").read(),
+    long_description_content_type = "text/markdown",
     url ='https://github.com/dowoonlee/dwlib.git',
     author='dwlee',
     author_email='dwlee717@gmail.com',
