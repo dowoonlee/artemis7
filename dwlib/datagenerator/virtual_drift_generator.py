@@ -4,10 +4,10 @@ from numpy.random import choice, rand, gamma, randint
 from astropy.time import Time
 from datetime import datetime
 import json
-from stats.binning import *
+from dwlib.stats.binning import *
 
 """
-Concept drift generator (CDG)
+Virtual drift generator (VDG)
 
 
 1. Initialization
@@ -36,7 +36,7 @@ The difference between them is that "incremental" has gentle drift in time inter
 
 """
 
-class concept_drift_generator():
+class VirtualDriftGenerator():
     def __init__(self, time_range, drift_time_sequence, prob_type, n_cont, n_disc, **kwargs):
         """
         time_range : array-like. 데이터셋의 시작시간과 끝시간. (start, end)형태로 입력.

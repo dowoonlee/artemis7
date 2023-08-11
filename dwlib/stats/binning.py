@@ -1,4 +1,6 @@
 import numpy as np
+
+@staticmethod
 def __getBin(rule, x, axis):
     result = None
     if axis==None:

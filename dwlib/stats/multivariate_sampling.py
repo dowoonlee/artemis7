@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
-from stats.binning import *
+from dwlib.stats.binning import *
 
+@staticmethod
 def isdiscrete(x):
     if isinstance(x, pd.Series):
         x = x.to_numpy()

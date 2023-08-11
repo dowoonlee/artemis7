@@ -4,6 +4,7 @@ setup(
     name = 'dwlib',
     version='0.0.5',
     description='Personal library to compute and draw',
+    long_description = open("long_description.rst").read(),
     url ='https://github.com/dowoonlee/dwlib.git',
     author='dwlee',
     author_email='dwlee717@gmail.com',

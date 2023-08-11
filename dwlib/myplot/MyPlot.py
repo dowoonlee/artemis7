@@ -2,13 +2,13 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
-from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
+from matplotlib.ticker import MultipleLocator
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import numpy as np
 import sys
 sys.path.append(sys.path[0]+"/..")
-from stats.binning import *
+from dwlib.stats.binning import *
 
 ## init ##
 plt.rcParams["font.family"] = "Times New Roman"
@@ -144,6 +144,3 @@ def adjust_tickposition(ax, loc, **kwargs):
         ax.yaxis.tick_right()
         ax.yaxis.set_label_position('right')
     return
-
-    
-

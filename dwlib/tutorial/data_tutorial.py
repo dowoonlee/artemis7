@@ -1,6 +1,5 @@
 import numpy as np
-from dwlib.util.make_movie import make_movie
-from dwlib.datagenerator.virtual_drift_generator import concept_drift_generator
+from dwlib.datagenerator.virtual_drift_generator import virtual_drift_generator as vdg
 from dwlib.stats.frechet_inception_distance import FID
 from dwlib.stats.binning import *
 import matplotlib.pyplot as plt
@@ -13,11 +12,11 @@ t0 = Time("2014-01-01").mjd
 drift_time_seq = [str(Time(t0+90*i, format="mjd").datetime64) for i in range(20)]
 size = int(Time(time_range[1]).mjd - Time(time_range[0]).mjd)
 n_cont, n_disc = 20, 20
-cdg = concept_drift_generator(time_range=time_range, drift_time_sequence=drift_time_seq,
+vdgenerator = vdg(time_range=time_range, drift_time_sequence=drift_time_seq,
 n_drift_type=1, n_cont=n_cont, n_disc=n_disc,
 dt = 1/24)
-df = cdg.generate(drift= "virtual", drift_type="incremental", strength=20, noise=0.02)
-cdg.save_to_csv("./dwlib/data/generated_table/")
+df = vdgenerator.generate(drift= "virtual", drift_type="incremental", strength=20, noise=0.02)
+vdgenerator.save_to_csv("./dwlib/data/generated_table/")
 # df.to_csv("./dwlib/data/generated_table/vi_c%02d_d%02d.csv"%(n_cont, n_disc))
 # df = pd.read_csv("./dwlib/data/generated_table/vi_c%02d_d%02d.csv"%(n_cont, n_disc), index_col=0)
 

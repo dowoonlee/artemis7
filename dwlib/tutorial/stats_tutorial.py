@@ -1,7 +1,5 @@
-from dwlib.stats.binning import binning
-from dwlib.stats.piecewise_rejection_sampling import PRS
+from dwlib.stats.binning import *
 from dwlib.stats.frechet_inception_distance import FID
-
 import numpy as np
 
 
@@ -9,8 +7,8 @@ x = np.random.rand(100, 100)
 y = np.random.rand(100, 100)
 def actuator(dset1, dset2):
     norm=True
-    b1 = binning(dset1[:,0])
-    b2 = binning(dset2[:,0])
+    b1 = sturges(dset1[:,0])
+    b2 = sturges(dset2[:,0])
     bins = np.max([b1.bins(), b2.bins()])
 
     xr = (np.min([dset1[:, 0].min(), dset2[:, 0].min()]), np.max([dset1[:, 0].max(), dset2[:, 0].max()]))
