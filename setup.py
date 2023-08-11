@@ -2,13 +2,14 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'dwlib',
-    version='0.0.3',
+    version='0.0.4',
     description='Personal library to compute and draw',
     url ='https://github.com/dowoonlee/dwlib.git',
     author='dwlee',
     author_email='dwlee717@gmail.com',
     license='dwlee',
-    packages=['dwlib'],
+    packages = (
+        find_packages(where="dwlib")),
     zip_safe=False,
     install_requires=[
         'numpy==1.22.3',
