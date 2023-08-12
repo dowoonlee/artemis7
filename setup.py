@@ -1,16 +1,16 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = 'dwlib',
-    version='0.0.6',
+    name = 'artemis',
+    version='0.0.7',
     description='Personal library to compute and draw',
     long_description = open("README.md").read(),
     long_description_content_type = "text/markdown",
-    url ='https://github.com/dowoonlee/dwlib.git',
+    url ='https://github.com/dowoonlee/artemis.git',
     author='dwlee',
     author_email='dwlee717@gmail.com',
-    license='dwlee',
-    packages = ["dwlib", "dwlib.datagenerator", "dwlib.myplot", "dwlib.stats", "dwlib.util"],
+    license='artemis',
+    packages = ["artemis", "artemis.datagenerator", "artemis.myplot", "artemis.stats", "artemis.util"],
     zip_safe=False,
     install_requires=[
         'numpy==1.22.3',

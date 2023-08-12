@@ -1,5 +1,5 @@
-from dwlib.stats.binning import *
-from dwlib.stats.frechet_inception_distance import FID
+from artemis.stats.binning import *
+from artemis.stats.frechet_inception_distance import FID
 import numpy as np
 
 

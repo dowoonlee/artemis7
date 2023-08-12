@@ -1,4 +1,4 @@
-from dwlib.myplot import MyPlot as mp
+from artemis.myplot import MyPlot as mp
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np

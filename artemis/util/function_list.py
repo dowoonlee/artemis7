@@ -1,6 +1,6 @@
 from inspect import getmembers, isfunction, isclass, getfullargspec
 from tabulate import tabulate
-from dwlib.util.colorprint import Colorprint as cp
+from artemis.util.colorprint import Colorprint as cp
 
 def list(class_):
     member_candidates = getmembers(class_, isfunction)

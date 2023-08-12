@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import numpy as np
 import sys
 sys.path.append(sys.path[0]+"/..")
-from dwlib.stats.binning import *
+from artemis.stats.binning import *
 
 ## init ##
 plt.rcParams["font.family"] = "Times New Roman"

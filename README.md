@@ -1,10 +1,11 @@
-# DWLIB
+# ARTEMIS
 
-## Library for computing and drawing
+## Analytics, Reporting, and Tools for Exploratory Measures in Statistics
 
-This library is pre-released. you can install dwlib from PyPI with `pip`:
+
+This library is pre-released. you can install artemis from PyPI with `pip`:
 ```bash
-pip install dwlib
+pip install artemis
 ```
 
 - datagenerator

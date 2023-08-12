@@ -1,7 +1,7 @@
 import numpy as np
-from dwlib.datagenerator.virtual_drift_generator import virtual_drift_generator as vdg
-from dwlib.stats.frechet_inception_distance import FID
-from dwlib.stats.binning import *
+from artemis.datagenerator.virtual_drift_generator import virtual_drift_generator as vdg
+from artemis.stats.frechet_inception_distance import FID
+from artemis.stats.binning import *
 import matplotlib.pyplot as plt
 from astropy.time import Time
 
