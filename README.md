@@ -1,4 +1,4 @@
-# ARTEMIS
+# ARTEMIS7
 
 ## Analytics, Reporting, and Tools for Exploratory Measures in Statistics
 
