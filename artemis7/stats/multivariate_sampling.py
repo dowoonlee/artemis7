@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
-from artemis.stats.binning import *
+from artemis7.stats.binning import *
 
 @staticmethod
 def isdiscrete(x):

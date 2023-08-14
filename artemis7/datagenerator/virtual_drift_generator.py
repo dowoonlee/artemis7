@@ -4,7 +4,7 @@ from numpy.random import choice, rand, gamma, randint
 from astropy.time import Time
 from datetime import datetime
 import json
-from artemis.stats.binning import *
+from artemis7.stats.binning import *
 
 """
 Virtual drift generator (VDG)

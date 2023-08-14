@@ -5,7 +5,7 @@
 
 This library is pre-released. you can install artemis from PyPI with `pip`:
 ```bash
-pip install artemis
+pip install artemis7
 ```
 
 - datagenerator
