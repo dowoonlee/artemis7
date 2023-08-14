@@ -1,5 +1,4 @@
-from dwlib.myplot import *
-from dwlib.stats import *
-from dwlib.util.function_list import list
-list(MyPlot)
+from artemis7.stats.frechet_inception_distance import FID
+import artemis7 as a7
 
+help(a7)
