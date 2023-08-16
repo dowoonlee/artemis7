@@ -9,7 +9,7 @@
 *.dat
 
 ### test run file ###
-test.py
+./test.py
 
 ### Figure / Movie ###
 *.png

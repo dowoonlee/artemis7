@@ -21,7 +21,7 @@ def sturges(x, axis=None):
             n = x
         else:
             n = len(x)
-        return int(1+3.322*np.log10(n))
+        return int(1 + np.ceil(np.log2(n)))
     return __getBin(__sturges, x, axis)
 
 def doane(x, axis=None):
@@ -36,12 +36,14 @@ def doane(x, axis=None):
 def scott(x, axis=None):
     def __scott(x):
         n = len(x)
-        return int(3.49 * np.std(x) / (n**(1/3)))
+        h = 3.49 * np.std(x) / (n**(1/3))
+        return int(max(x)-min(x)/h)
     return __getBin(__scott, x, axis)
 
 def freedman_diaconis(x, axis=None):
     def __freedman_diaconis(x):
         n = len(x)
         iqr = np.percentile(x, 75) - np.percentile(x, 25)
-        return int(2*iqr/(n**(1/3)))
+        h = 2*iqr/(n**(1/3))
+        return int(max(x)-min(x)/h)
     return __getBin(__freedman_diaconis, x, axis)
