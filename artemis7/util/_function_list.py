@@ -1,8 +1,13 @@
 from inspect import getmembers, isfunction, isclass, getfullargspec
 from tabulate import tabulate
-from artemis7.util.colorprint import Colorprint as cp
+from ._colorprint import Colorprint as cp
+
+__all__ = ["list"]
 
 def list(class_):
+    """
+    class_ : target class to get list of functions of it
+    """
     member_candidates = getmembers(class_, isfunction)
     ml = []
     print(cp.BOLD + "Functions" + cp.END)

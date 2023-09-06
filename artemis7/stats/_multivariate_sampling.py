@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
-from artemis7.stats.binning import *
+from ._binning import *
+
+__all__ = ["MultiVariateSampler"]
 
 @staticmethod
 def isdiscrete(x):
@@ -17,7 +19,7 @@ def isdiscrete(x):
     else:
         False
 
-class MVSampler():
+class MultiVariateSampler():
     def __init__(self, reference, inference, target_cols):
         """
         reference : pd.DataFrame.

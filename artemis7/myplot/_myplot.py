@@ -8,12 +8,17 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import numpy as np
 import sys
 sys.path.append(sys.path[0]+"/..")
-from artemis7.stats.binning import *
+from artemis7.stats._binning import *
 
 ## init ##
 plt.rcParams["font.family"] = "Times New Roman"
 plt.rcParams["xtick.labelsize"] = 12
 plt.rcParams["ytick.labelsize"] = 12
+
+__all__ = [
+    "plot", "colored_scatter", "number_density", "number_density_histxy", "bubble_diagram",
+    "legend", "set_background", "set_minorticks", "adjust_tickpostion"
+]
 
 
 def plot(ax, xy, **kwargs):

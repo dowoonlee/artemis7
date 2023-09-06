@@ -1,7 +1,9 @@
 import imageio
 import os
 
-class make_movie():
+__all__ = ["MakeMovie"]
+
+class MakeMovie():
     def __init__(self, path, extension):
         """
         path : directory where input images exist

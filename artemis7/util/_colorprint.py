@@ -1,4 +1,7 @@
 class Colorprint:
+    """
+    system font color class
+    """
     PURPLE = '\033[95m'
     CYAN = '\033[96m'
     DARKCYAN = '\033[36m'

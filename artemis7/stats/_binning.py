@@ -1,6 +1,10 @@
 import numpy as np
 
-@staticmethod
+__all__ = [
+    "sturges", "doane", "scott", "freedman_diaconis"
+]
+
+
 def __getBin(rule, x, axis):
     result = None
     if axis==None:

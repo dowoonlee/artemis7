@@ -4,7 +4,7 @@ from numpy.random import choice, rand, gamma, randint
 from astropy.time import Time
 from datetime import datetime
 import json
-from artemis7.stats.binning import *
+from artemis7.stats._binning import *
 
 """
 Virtual drift generator (VDG)
@@ -35,6 +35,8 @@ The difference between them is that "incremental" has gentle drift in time inter
 
 
 """
+
+__all__ = ["VirtualDriftGenerator"]
 
 class VirtualDriftGenerator():
     def __init__(self, time_range, drift_time_sequence, prob_type, n_cont, n_disc, **kwargs):

@@ -1,5 +1,8 @@
 import numpy as np
 
+__all__ = ["population_stability_index"]
+
+
 def population_stability_index(expected, actual, buckettype='bins', buckets=10, axis=0):
     def psi(expected_array, actual_array, buckets):
         

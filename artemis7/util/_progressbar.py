@@ -1,10 +1,9 @@
 import numpy as np
 import time
 
+__all__ = ["ProgressBar"]
 
-
-
-class progressbar():
+class ProgressBar():
     def __init__(self, maxV, jobname=""):
         self.maxV = maxV
         self._current_percent = 1
@@ -47,14 +46,4 @@ class progressbar():
     
     def __del__(self):
         print("\r"+self._pout(100, eta_disp=True), end="")
-
-
-
-import time
-n = 50
-pb = progressbar(n, "hi")
-pb.start()
-for i in range(n):
-    pb.update(i)
-    time.sleep(0.05)
 

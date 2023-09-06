@@ -1,6 +1,9 @@
 import numpy as np
 
-class PRS():
+__all__ = ["PiecewiseRejectionSampling"]
+
+
+class PiecewiseRejectionSampling():
     def __init__(self, X, bins, seed=False):
         if seed:
             np.random.seed(seed)

@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.linalg import sqrtm
 
+__all__ = ["FID"]
+
 def FID(act1, act2):
     """
     Calculate the FID between two images
